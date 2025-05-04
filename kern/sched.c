@@ -29,22 +29,25 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-	//LLM: How to correctly use NENV, ENVX, and envs for Round Robin
-    // Start searching from the next environment after the one this CPU was last running
-    int start = curenv ? ENVX(curenv->env_id) + 1 : 0;
-    //iterate through environments circularly
-    for (int i = 0; i < NENV; i++) {
-        idle = &envs[(start + i) % NENV];
-        if (idle->env_status == ENV_RUNNABLE) {
-			//switch to idle which is runnable
-            env_run(idle);
+
+    static uint32_t probing_env_idx = 0;
+    //if (curenv)
+    //    cprintf("My envid: %p on CPU %d\n", curenv->env_id, cpunum());
+    for (uint32_t i = probing_env_idx; i < (probing_env_idx + NENV); ++i) {
+        uint32_t env_idx = i % NENV;
+        if (envs[env_idx].env_status == ENV_RUNNABLE) {
+            //cprintf("Found other runnable at: %d\n", env_idx);
+            struct Env *target_env = &envs[env_idx];
+            probing_env_idx = (env_idx + 1) % NENV;
+            env_run(target_env);
         }
     }
 
-    // If no runnable environments are found, check if the current environment is still running
     if (curenv && curenv->env_status == ENV_RUNNING) {
-        env_run(curenv); // Continue running the current environment
+        //cprintf("Re-running current_env\n");
+        env_run(curenv);
     }
+
 	// sched_halt never returns
 	sched_halt();
 }
@@ -89,7 +92,6 @@ sched_halt(void)
 		"movl %0, %%esp\n"
 		"pushl $0\n"
 		"pushl $0\n"
-        // LAB 4:
 		// Uncomment the following line after completing exercise 13
 		"sti\n"
 		"1:\n"

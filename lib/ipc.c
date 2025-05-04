@@ -23,30 +23,21 @@ int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 {
 	// LAB 4: Your code here.
-	// Call sys_ipc_recv with the appropriate value for pg
-    int r = sys_ipc_recv(pg);
-
-    // If the system call fails, store 0 in from_env_store and perm_store (if non-null)
-    if (r != 0) {
-        if (from_env_store) {
-            *from_env_store = 0;
-        }
-        if (perm_store) {
-            *perm_store = 0;
-        }
-        return r; // Return the error code
+	//panic("ipc_recv not implemented");
+    int32_t ret;
+    if ( (ret = sys_ipc_recv(pg == NULL ? (void*)-1 : pg)) < 0) {
+        return ret;
     }
 
-    // On success, retrieve the IPC sender's envid and permissions from thisenv
-    if (from_env_store) {
-        *from_env_store = thisenv->env_ipc_from;
-    }
     if (perm_store) {
         *perm_store = thisenv->env_ipc_perm;
     }
 
-    // Return the value sent by the sender
-    return thisenv->env_ipc_value;
+    if (from_env_store) {
+        *from_env_store = thisenv->env_ipc_from;
+    }
+
+	return thisenv->env_ipc_value;
 }
 
 // Send 'val' (and 'pg' with 'perm', if 'pg' is nonnull) to 'toenv'.
@@ -61,27 +52,27 @@ void
 ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 {
 	// LAB 4: Your code here.
-	void *srcva = (pg == NULL) ? (void *)UTOP : pg;
+	//panic("ipc_send not implemented");
+    int32_t ret = -E_IPC_NOT_RECV;
+    int threshold = 16;
+    int cur_wait = 1;
+    do {
 
-    while (1) {
-        int r;
+        ret = sys_ipc_try_send(to_env, val, pg == NULL ? (void*)-1 : pg, perm);
+        //sys_yield();
 
-        // Attempt to send the value and page
-        r = sys_ipc_try_send(to_env, val, srcva, perm);
-
-        // If the send succeeds, return
-        if (r == 0) {
-            return;
-        }
-
-        // If the target is not ready to receive, yield the CPU and try again
-        if (r == -E_IPC_NOT_RECV) {
+        // exponential backoff
+        for (int i=0; i<cur_wait; ++i) {
             sys_yield();
-        } else {
-            // Panic on any other error
-            panic("sys_ipc_try_send error %e (%d)", r, r);
         }
+        // update wait value
+        cur_wait <<= 1;
+        if (cur_wait > threshold) {
+            cur_wait = 1;
+        }
+
     }
+    while (ret == -E_IPC_NOT_RECV);
 }
 
 // Find the first environment of the given type.  We'll use this to

@@ -22,12 +22,11 @@ struct Command {
 	int (*func)(int argc, char** argv, struct Trapframe* tf);
 };
 
-// LAB 1: add your command to here...
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	//{ "hidden", "Run hidden test cases", exec_hidden_cases},
-	{ "backtrace", "test backtrace function", mon_backtrace},
+    { "backtrace", "Show the backtrace of the current kernel stack",
+        mon_backtrace },
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -58,44 +57,39 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
-int mon_backtrace(int argc, char **argv, struct Trapframe *tf)
+int
+mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-    // LAB 1: Your code here.
-    // HINT 1: use read_ebp().
-    // HINT 2: print the current ebp on the first line (not current_ebp[0])
-	cprintf("Stack backtrace:\n");
+	// Your code here.
 
-	//LLMPROMPT: in GNU x86 assembly, i need to trace addresses of ebp and esp which 
-	//are stack pointers, what types and typecasts should I use to track the stack values.
+    cprintf("Stack backtrace:\n");
 
-    // Convert ebp into a pointer to 32-bit ints which makes it easier to step through.
-    uint32_t *ebp = (uint32_t *) read_ebp();
+    uint32_t c_ebp = read_ebp();
 
-    while (ebp != 0) {//entry.S says 0 is last ebp range of [0, 4MB]
-        uint32_t eip        = ebp[1];
-        uint32_t *ebp_caller = (uint32_t *) ebp[0];
-
-        cprintf("  ebp %08x  eip %08x  args", (uint32_t) ebp, eip);
-
-        //print five args like manual
-        for (int i = 0; i < 5; i++) {
-            cprintf(" %08x", ebp[2 + i]);
+    while (c_ebp != 0) {
+        uint32_t *ebp = (uint32_t *)c_ebp;
+        cprintf("  ebp %08x", c_ebp);
+        cprintf("  eip %08x", ebp[1]);
+        cprintf("  args");
+        for(int i = 0; i < 5; ++i) {
+            cprintf(" %08x", ebp[2+i]);
         }
         cprintf("\n");
-		struct Eipdebuginfo extra_info;
-		int print_extra = debuginfo_eip(eip ,&extra_info);
-		if (print_extra != -1 ){
-			const char  *filename = extra_info.eip_file;
-			int line_num = extra_info.eip_line;
-			const char *fun_name = extra_info.eip_fn_name;
-			int fun_len = extra_info.eip_fn_namelen;
-			int offset = eip - extra_info.eip_fn_addr;
-			cprintf("%s:%d: %.*s+%d\n", filename, line_num, fun_len, fun_name, offset);
-		}
 
+        struct Eipdebuginfo info;
+        memset(&info, 0, sizeof(struct Eipdebuginfo));
 
-        //move 'ebp' up one frame
-        ebp = ebp_caller;
+        int ret = debuginfo_eip((uintptr_t)ebp[1], &info);
+        cprintf("         ");
+        cprintf("%s:", info.eip_file);
+        cprintf("%d: ", info.eip_line);
+        cprintf("%.*s", info.eip_fn_namelen, info.eip_fn_name);
+
+        uintptr_t addr = ebp[1] - info.eip_fn_addr;
+
+        cprintf("+%d\n", addr);
+
+        c_ebp = ebp[0];
     }
 	return 0;
 }

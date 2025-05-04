@@ -1,10 +1,22 @@
-Q1:    The purpose of the macro MPBOOTPHYS is to link the correct physical address by translating it to where it is actually loaded.
-    This is not present in boot since it is already linked at 0x7... to be loaded. if this were omitted the wrong GDT would be used.
+Question 1 (Exercise 2): 
 
-Q2:    The kernel lock will guarantee that only one CPU is runing the kernel code. But if you don't make sure to have separate kernel stacks, the programs can still
-    Push to the kernel stacks while the lock is on, so you could get two different kernels mixing onto one stack and cause corruption.
+MPBOOTPHYS is used to calculate absolute addresses of the symbols in mpentry.S
+This is needed in mpentry.S because the actual physical loading address of mpentry_start is different from the link address. So instead of relying on linker, we should do this ourselves.
+If we omit this then we will load wrong address in gdt and other places.
 
-Q3:    e is mapped above kernelbase meaning it is in kernel address space. This means that it's address stays the same even between different page directories.
+Question 2 (Exercise 5):
+The big kernel lock avoid concurrency access to global/shared data.
+Having seperate kernel stacks ensures that CPUs are using different stacks and hence separate local variables.
+If we don't use seperate stacks then concurrency issues can occur because of local variables as well and we can never have concurrent execution across multiple CPUs.
 
-Q4:    After you enter the trap handler, the kernel pushes registers to the trapframe and saves it in trap(). then before the environment pops again, the kernel
-    pops all the saved registers and switches to the new environment.
+
+Question 3 (Exercise 6):
+e is on kernel stack and the kernel is mapped to the same virtual address in all environments. 
+Hence switching page tables of different environments still allows access to e.
+
+
+Question 4 (Exercise 6):
+We will save the trap frame (which includes old values of registers) of old environment to env_tf field of the env structure. We store this in trap function of trap.c.
+To restore an environment, we mimic return from interrupt to the environment using: env_pop_tf which restarts the environment.
+
+

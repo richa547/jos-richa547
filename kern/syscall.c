@@ -411,7 +411,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
             return -E_INVAL;
         }
 
-        uint32_t perm_check = ~(PTE_SYSCALL);
+        uint32_t perm_check = ~(PTE_U | PTE_P | PTE_W);
         if (perm & perm_check) {
             return -E_INVAL;
         }

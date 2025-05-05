@@ -142,10 +142,27 @@ sys_env_set_status(envid_t envid, int status)
 static int
 sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 {
-	// LAB 5: Your code here.
-	// Remember to check whether the user has supplied us with a good
-	// address!
-	panic("sys_env_set_trapframe not implemented");
+	struct Env *e;
+    int r;
+
+    // LAB 5: Your code here.
+    // 1) Lookup and check permissions.
+    if ((r = envid2env(envid, &e, true)) < 0)
+        return r;
+
+    // 2) Validate the user pointer.
+    user_mem_assert(curenv, tf, sizeof *tf, PTE_U);
+
+    // 3) Copy in the provided trapframe wholesale.
+    //    (load_icode already set cs/ss/eflags correctly.)
+    e->env_tf = *tf;
+
+    // 4) Make sure interrupts are enabled in the child.
+    e->env_tf.tf_eflags |= FL_IF;
+    // 5) And clear any stray IOPL bits.
+    e->env_tf.tf_eflags &= ~FL_IOPL_MASK;
+
+    return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -423,7 +440,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
             return -E_INVAL;
         }
 
-        uint32_t perm_check = ~(PTE_U | PTE_P | PTE_W);
+        uint32_t perm_check = ~(PTE_SYSCALL);
         if (perm & perm_check) {
             return -E_INVAL;
         }
@@ -553,6 +570,11 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
     case SYS_env_set_pgfault_upcall:
     {
         return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
+    }
+    case SYS_env_set_trapframe:
+    {
+        return sys_env_set_trapframe((envid_t)a1,
+                                     (struct Trapframe*)a2);
     }
     case SYS_ipc_try_send:
     {

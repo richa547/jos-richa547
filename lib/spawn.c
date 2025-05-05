@@ -302,6 +302,14 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
-	return 0;
+	//LLM how do you copy shared pages in jos
+	uintptr_t va;
+    for (va = 0; va < UTOP; va += PGSIZE) {
+        pte_t pte = uvpt[PGNUM(va)];
+        if ((pte & PTE_P) && (pte & PTE_SHARE)) {
+            sys_page_map(0, (void*)va, child, (void*)va, pte & PTE_SYSCALL);
+        }
+    }
+    return 0;
 }
 

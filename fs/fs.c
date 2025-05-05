@@ -144,8 +144,33 @@ fs_init(void)
 static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
-       // LAB 5: Your code here.
-       panic("file_block_walk not implemented");
+    // LAB 5: Your code here.
+	//LLM Prompt: How does the file block system work in jos labs and what are the proper calling conventions.
+	//How would you walk the file block structure of a jos lab?
+    if (filebno < NDIRECT) {
+    	*ppdiskbno = &f->f_direct[filebno];
+    	return 0;
+	}
+    // beyond direct blocks → indirect
+    filebno -= NDIRECT;
+    if (filebno >= NINDIRECT)
+        return -E_NO_DISK;
+
+    // allocate the indirect block if needed
+    if (f->f_indirect == 0) {
+        if (!alloc)
+            return -E_NOT_FOUND;
+        int r = alloc_block();
+        if (r < 0)
+            return r;
+        f->f_indirect = r;
+        flush_block(&f->f_indirect);
+    }
+
+    // grab pointer into the indirect block
+    uint32_t *ind = (uint32_t *)diskaddr(f->f_indirect);
+    *ppdiskbno = &ind[filebno];
+    return 0;
 }
 
 // Set *blk to the address in memory where the filebno'th
@@ -159,8 +184,24 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 int
 file_get_block(struct File *f, uint32_t filebno, char **blk)
 {
-       // LAB 5: Your code here.
-       panic("file_get_block not implemented");
+    // LAB 5: Your code here.
+	//LLM: When making a file system with a jos lab what is the correct formatting for getting a file block
+    uint32_t *ppdiskbno;
+    int r = file_block_walk(f, filebno, &ppdiskbno, true);
+    if (r < 0)
+        return r;
+
+    // if this block hasn’t been allocated on disk yet, do so
+    if (*ppdiskbno == 0) {
+        r = alloc_block();
+        if (r < 0)
+            return r;
+        *ppdiskbno = r;
+        flush_block(ppdiskbno);
+    }
+
+    *blk = diskaddr(*ppdiskbno);
+    return 0;
 }
 
 // Try to find a file named "name" in dir.  If so, set *file to it.

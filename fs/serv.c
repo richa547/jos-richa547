@@ -214,7 +214,19 @@ serve_read(envid_t envid, union Fsipc *ipc)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// Lab 5: Your code here:
-	return 0;
+	int r;
+    struct OpenFile *of;
+    if ((r = openfile_lookup(envid, req->req_fileid, &of)) < 0)
+        return r;
+    // Read up to req_n bytes (file_read handles bounds and block mapping)
+    if ((r = file_read(of->o_file,
+                        ret->ret_buf,
+                        req->req_n,
+                        of->o_fd->fd_offset)) < 0)
+        return r;
+    // Advance the file offset
+    of->o_fd->fd_offset += r;
+    return r;
 }
 
 
@@ -224,12 +236,24 @@ serve_read(envid_t envid, union Fsipc *ipc)
 // bytes written, or < 0 on error.
 int
 serve_write(envid_t envid, struct Fsreq_write *req)
-{
+{	
+	struct OpenFile *o;
+    int r;
+
 	if (debug)
 		cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// LAB 5: Your code here.
-	panic("serve_write not implemented");
+	//LLM Prompt: what is proper conventions for a file write in a jos lab
+	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
+        return r;
+    if ((r = file_write(o->o_file,
+                        req->req_buf,
+                        req->req_n,
+                        o->o_fd->fd_offset)) > 0) {
+        o->o_fd->fd_offset += r;
+    }
+    return r;
 }
 
 // Stat ipc->stat.req_fileid.  Return the file's struct Stat to the

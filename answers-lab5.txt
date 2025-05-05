@@ -1,0 +1,2 @@
+1. No. the hardware pushes the EFLAGS register on the kernel stack before the CPU switches to the kernel with syscall or interrupts. 
+the EFLAGS register gets saved in the trapframe. When the environment gets restored the kernel pops the environment trapframe restores the EFLAGS register.

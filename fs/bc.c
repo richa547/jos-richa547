@@ -91,21 +91,16 @@ flush_block(void *addr)
 
 	// LAB 5: Your code here.
 	//LLM: how to properly fill out flush block in a jos lab.
-	// 1) round down to block boundary
     void *pg_start = ROUNDDOWN(addr, BLKSIZE);
 
-    // 2) only flush mapped, dirty pages in diskmap
     if (!va_is_mapped(pg_start) || !va_is_dirty(pg_start))
         return;
-
-    // 3) compute block → first sector
+	
     uint32_t first_sector = blockno * (BLKSIZE / SECTSIZE);
 
-    // 4) write back to disk
     if (ide_write(first_sector, pg_start, BLKSIZE / SECTSIZE) < 0)
         panic("flush_block: ide_write failed");
 
-    // 5) clear dirty bit by re-mapping without PTE_D
     if (sys_page_map(0, pg_start, 0, pg_start,
         uvpt[PGNUM(pg_start)] & PTE_SYSCALL) < 0)
         panic("flush_block: sys_page_map failed");

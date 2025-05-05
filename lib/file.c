@@ -142,8 +142,8 @@ devfile_write(struct Fd *fd, const void *buf, size_t n)
 	// remember that write is always allowed to write *fewer*
 	// bytes than requested.
 	// LAB 5: Your code here
-	//LLM Prompt: what does the devfile_write function in lib/file.c do in jos. What commands create an PSREQ_WRITE request
-	//to the file system server.
+	//LLM Prompt: what does the devfile_write function in lib/file.c do in jos. What commands create an FSREQ_WRITE request
+	//to the file system server in jos.
 	fsipcbuf.write.req_fileid = fd->fd_file.id;
     fsipcbuf.write.req_n      = n;
     assert(n <= PGSIZE - (sizeof(int) + sizeof(size_t)));

@@ -143,24 +143,16 @@ static int
 sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 {
 	// LAB 5: Your code here.
-  // Remember to check whether the user has supplied us with a good
-  // address!
-  struct Env *e;
+    // Remember to check whether the user has supplied us with a good
+    // address!
+    struct Env *e;
     int r;
 
-    // 1) Lookup and permission‐check
     if ((r = envid2env(envid, &e, true)) < 0)
         return r;
-
-    // 2) Validate the trapframe pointer
     user_mem_assert(curenv, tf, sizeof *tf, PTE_U);
-
-    // 3) Copy user‐supplied trapframe wholesale
     e->env_tf = *tf;
-
-    // 4) Always turn interrupts on in the child
     e->env_tf.tf_eflags |= FL_IF;
-
     return 0;
 }
 

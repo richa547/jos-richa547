@@ -142,27 +142,17 @@ sys_env_set_status(envid_t envid, int status)
 static int
 sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 {
-	struct Env *e;
-    int r;
-
-    // LAB 5: Your code here.
-    // 1) Lookup and check permissions.
-    if ((r = envid2env(envid, &e, true)) < 0)
-        return r;
-
-    // 2) Validate the user pointer.
-    user_mem_assert(curenv, tf, sizeof *tf, PTE_U);
-
-    // 3) Copy in the provided trapframe wholesale.
-    //    (load_icode already set cs/ss/eflags correctly.)
-    e->env_tf = *tf;
-
-    // 4) Make sure interrupts are enabled in the child.
-    e->env_tf.tf_eflags |= FL_IF;
-    // 5) And clear any stray IOPL bits.
-    e->env_tf.tf_eflags &= ~FL_IOPL_MASK;
-
-    return 0;
+	// LAB 5: Your code here.
+  // Remember to check whether the user has supplied us with a good
+  // address!
+  struct Env *e;
+  int ret;
+  if ((ret = envid2env(envid, &e, 1)) < 0)
+    return ret;
+  user_mem_assert(curenv, tf, sizeof(struct Trapframe), PTE_U | PTE_P);
+  e->env_tf = *tf;
+  e->env_tf.tf_eflags |= FL_IF;
+  return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct

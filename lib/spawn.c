@@ -303,13 +303,31 @@ copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
 	//LLM how do you copy shared pages in jos
-	uintptr_t va;
-    for (va = 0; va < UTOP; va += PGSIZE) {
-        pte_t pte = uvpt[PGNUM(va)];
-        if ((pte & PTE_P) && (pte & PTE_SHARE)) {
-            sys_page_map(0, (void*)va, child, (void*)va, pte & PTE_SYSCALL);
+	int i, j, r;
+
+    // Walk the two‐level page table via uvpd/uvpt:
+    for (i = 0; i < NPDENTRIES; i++) {
+        // Skip entire 4 MB region if the PDE isn’t present.
+        if (!(uvpd[i] & PTE_P))
+            continue;
+
+        for (j = 0; j < NPTENTRIES; j++) {
+            // Compute the page number and its virtual address
+            int pn = i * NPTENTRIES + j;
+            uintptr_t va = pn * PGSIZE;
+            if (va >= UTOP)
+                break;
+
+            pte_t pte = uvpt[pn];
+            // Only share pages explicitly marked PTE_SHARE
+            if ((pte & PTE_P) && (pte & PTE_SHARE)) {
+                int perm = pte & PTE_SYSCALL;
+                if ((r = sys_page_map(0, (void*)va, child, (void*)va, perm)) < 0)
+                    return r;
+            }
         }
     }
+
     return 0;
 }
 

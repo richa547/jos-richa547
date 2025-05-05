@@ -66,29 +66,30 @@ pgfault(struct UTrapframe *utf)
 static int
 duppage(envid_t envid, unsigned pn)
 {
-	int r;
+	pte_t pte = uvpt[pn];
+    void *addr = (void*)(pn * PGSIZE);
 
-	// LAB 4: Your code here.
-    int perm = PTE_U | PTE_P;
-    pte_t pte = uvpt[pn];
-    if ( (pte & PTE_W) || (pte & PTE_COW) ) {
-        perm |= PTE_COW;
+    if (pte & PTE_SHARE) {
+        // Shared pages copy straight across
+        return sys_page_map(0, addr, envid, addr, pte & PTE_SYSCALL);
     }
 
-    void *addr = (void *)(pn << PGSHIFT);
-
-    if ((r = sys_page_map(0, addr, envid, addr, perm)) < 0) {
-        panic("sys_page_map others failed %e\n", r);
+    if (pte & PTE_W) {
+        int r;
+        // Map COW into child
+        if ((r = sys_page_map(0, addr, envid, addr,
+                              (pte & PTE_SYSCALL & ~PTE_W) | PTE_COW)) < 0)
+            return r;
+        // Mark our own mapping COW
+        if ((r = sys_page_map(0, addr, 0, addr,
+                              (pte & PTE_SYSCALL & ~PTE_W) | PTE_COW)) < 0)
+            return r;
+    } else {
+        // Read-only pages map straight across
+        return sys_page_map(0, addr, envid, addr, pte & PTE_SYSCALL);
     }
 
-    if (perm | PTE_COW) {
-        if ((r = sys_page_map(0, addr, 0, addr, perm)) < 0) {
-            panic("sys_page_map mine failed %e\n", r);
-        }
-    }
-
-    //panic("duppage not implemented");
-	return 0;
+    return 0;
 }
 
 //

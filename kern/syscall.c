@@ -152,6 +152,8 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
         return r;
     user_mem_assert(curenv, tf, sizeof *tf, PTE_U);
     e->env_tf = *tf;
+    // ...but force IOPL = 0 and interrupts on
+    e->env_tf.tf_eflags &= ~FL_IOPL_MASK;
     e->env_tf.tf_eflags |= FL_IF;
     return 0;
 }

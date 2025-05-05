@@ -443,9 +443,10 @@ env_create(uint8_t *binary, enum EnvType type)
 	// If this is the file server (type == ENV_TYPE_FS) give it I/O privileges.
 	// LAB 5: Your code here.
 	if (type == ENV_TYPE_FS) {
-        // Allow user‐mode FS server to do IN/OUT instructions
-        new_env->env_tf.tf_eflags |= FL_IOPL_3;
+	    // Allow the fs server to do port I/O instructions
+	    new_env->env_tf.tf_eflags |= FL_IOPL_3;
 	}
+	new_env->env_status = ENV_RUNNABLE;
 }
 
 //

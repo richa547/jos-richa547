@@ -146,13 +146,22 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
   // Remember to check whether the user has supplied us with a good
   // address!
   struct Env *e;
-  int ret;
-  if ((ret = envid2env(envid, &e, 1)) < 0)
-    return ret;
-  user_mem_assert(curenv, tf, sizeof(struct Trapframe), PTE_U | PTE_P);
-  e->env_tf = *tf;
-  e->env_tf.tf_eflags |= FL_IF;
-  return 0;
+    int r;
+
+    // 1) Lookup and permission‐check
+    if ((r = envid2env(envid, &e, true)) < 0)
+        return r;
+
+    // 2) Validate the trapframe pointer
+    user_mem_assert(curenv, tf, sizeof *tf, PTE_U);
+
+    // 3) Copy user‐supplied trapframe wholesale
+    e->env_tf = *tf;
+
+    // 4) Always turn interrupts on in the child
+    e->env_tf.tf_eflags |= FL_IF;
+
+    return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
